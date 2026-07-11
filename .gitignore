@@ -1,0 +1,24 @@
+# C++ build
+proxy/build/
+*.o
+*.a
+*.out
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+*.tsbuildinfo
+
+# Env / secrets
+.env
+*.local.env
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker/K8s local
+kubeconfig

@@ -1,0 +1,13 @@
+{
+  "name": "edgecache-dummy-origin",
+  "version": "1.0.0",
+  "description": "Trivial origin server returning tweakable Cache-Control headers, for testing EdgeCache.",
+  "license": "MIT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,68 @@
+### EdgeCache control-plane API examples (VS Code REST Client / IntelliJ HTTP).
+@control = http://localhost:9000
+@proxy = http://localhost:8080
+@adminKey = dev-admin-key
+
+### Health (public)
+GET {{control}}/health
+
+### Register an origin
+POST {{control}}/origins
+Authorization: Bearer {{adminKey}}
+Content-Type: application/json
+
+{ "host": "dummy-origin", "baseUrl": "http://dummy-origin:8081", "healthCheckPath": "/health" }
+
+### List origins
+GET {{control}}/origins
+Authorization: Bearer {{adminKey}}
+
+### Create a rule (120s TTL, 30s stale-while-revalidate)
+POST {{control}}/rules
+Authorization: Bearer {{adminKey}}
+Content-Type: application/json
+
+{ "pathPattern": "/products/*", "ttlSeconds": 120, "staleWhileRevalidateSeconds": 30 }
+
+### List rules
+GET {{control}}/rules
+Authorization: Bearer {{adminKey}}
+
+### Update a rule TTL (replace :id)
+PUT {{control}}/rules/REPLACE_WITH_RULE_ID
+Authorization: Bearer {{adminKey}}
+Content-Type: application/json
+
+{ "ttlSeconds": 300 }
+
+### Purge a URL fleet-wide
+POST {{control}}/purge
+Authorization: Bearer {{adminKey}}
+Content-Type: application/json
+
+{ "pattern": "/products/1" }
+
+### Purge a wildcard path
+POST {{control}}/purge
+Authorization: Bearer {{adminKey}}
+Content-Type: application/json
+
+{ "pattern": "/products/*" }
+
+### Purge audit log
+GET {{control}}/purge/log
+Authorization: Bearer {{adminKey}}
+
+### Stats for a path
+GET {{control}}/stats?path=/products/1
+Authorization: Bearer {{adminKey}}
+
+### ---- Proxy (data plane) ----
+### Cache MISS then HIT
+GET {{proxy}}/products/1
+
+### Proxy metrics
+GET http://localhost:9101/metrics
+
+### Proxy readiness
+GET http://localhost:9101/readyz

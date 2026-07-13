@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edgecache-proxy
+  namespace: edgecache
+  labels: { app: edgecache-proxy }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: edgecache-proxy }
+  template:
+    metadata:
+      labels: { app: edgecache-proxy }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: proxy
+          image: edgecache-proxy:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: metrics, containerPort: 9100 }
+          envFrom:
+            - configMapRef: { name: edgecache-proxy-config }
+          env:
+            # Use the pod name as the replica id so per-replica stats are distinct.
+            - name: EDGECACHE_REPLICA_ID
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              # This memory LIMIT bounds the cache: EDGECACHE_MAX_CACHE_BYTES
+              # (200Mi) is set below it, leaving headroom for connection buffers.
+              cpu: "1000m"
+              memory: "256Mi"
+          # Liveness = process responsiveness only (independent of Redis) so a
+          # Redis blip never gets a serving pod killed.
+          livenessProbe:
+            httpGet: { path: /healthz, port: 9100 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          # Readiness = the proxy is serving (independent of Redis) — it serves
+          # from L1 during a Redis outage, so it stays in rotation. Redis health
+          # is surfaced via the edgecache_redis_connected metric, not this probe.
+          readinessProbe:
+            httpGet: { path: /readyz, port: 9100 }
+            initialDelaySeconds: 3
+            periodSeconds: 5

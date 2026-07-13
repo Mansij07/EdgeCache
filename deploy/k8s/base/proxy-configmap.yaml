@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgecache-proxy-config
+  namespace: edgecache
+# Live, non-secret proxy config. Changing a value here and rolling the
+# Deployment is the "config-driven, zero-redeploy" demo point. The cache-size
+# byte budget is deliberately set a bit below the pod's memory *limit* (see
+# proxy-deployment.yaml) — the K8s resource limit bounds the app-level cache size.
+data:
+  EDGECACHE_LISTEN_PORT: "8080"
+  EDGECACHE_METRICS_PORT: "9100"
+  EDGECACHE_WORKERS: "0" # 0 => use all cores available to the pod
+  EDGECACHE_MAX_CACHE_BYTES: "209715200" # 200 MiB (pod memory limit is 256Mi)
+  EDGECACHE_DEFAULT_TTL_SECONDS: "60"
+  EDGECACHE_ORIGIN_HOST: "dummy-origin"
+  EDGECACHE_ORIGIN_PORT: "8081"
+  EDGECACHE_REDIS_HOST: "redis"
+  EDGECACHE_REDIS_PORT: "6379"
+  EDGECACHE_L2_ENABLED: "ON" # shared Redis L2 tier
+  EDGECACHE_KAFKA_BROKERS: "kafka:9092"
+  EDGECACHE_KAFKA_TOPIC: "edgecache.access-log"
+  EDGECACHE_RULE_POLL_SECONDS: "15"

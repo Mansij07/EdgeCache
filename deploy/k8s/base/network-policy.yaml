@@ -1,0 +1,20 @@
+# Deny direct pod-to-control-plane traffic except from within the namespace's
+# admin ingress path. This enforces the control-plane / data-plane boundary: the
+# public-facing proxy pods never need to call the admin API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: control-plane-restrict
+  namespace: edgecache
+spec:
+  podSelector:
+    matchLabels: { app: control-plane }
+  policyTypes: [Ingress]
+  ingress:
+    # Only allow ingress-controller pods (labelled) to reach the control plane.
+    - from:
+        - namespaceSelector:
+            matchLabels: { name: ingress-nginx }
+      ports:
+        - protocol: TCP
+          port: 9000

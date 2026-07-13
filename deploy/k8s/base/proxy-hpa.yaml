@@ -1,0 +1,28 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: edgecache-proxy
+  namespace: edgecache
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: edgecache-proxy
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    # CPU utilization is the simple, dependency-free autoscaling signal — good
+    # enough for the "generate load, watch replicas climb, watch them fall" demo.
+    # For scaling on actual request RATE, install the Prometheus Adapter and swap
+    # this for a Pods metric on rate(edgecache_requests_total) (see k8s README).
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 15

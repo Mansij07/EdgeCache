@@ -1,0 +1,47 @@
+# Public ingress routes client traffic to the proxy Service ONLY. The
+# control-plane admin API is intentionally NOT exposed here — it is reached via a
+# separate internal route (see overlays) / NetworkPolicy. Keeping the admin API
+# off the public ingress is a real security boundary, not an implementation detail.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edgecache-public
+  namespace: edgecache
+  annotations:
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri" # sticky-ish per-URL routing
+spec:
+  rules:
+    - host: edgecache.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: edgecache-proxy
+                port:
+                  number: 80
+---
+# Internal-only ingress for the admin API. In a real cluster this lives on a
+# private ingress class and/or is locked down by a NetworkPolicy so only trusted
+# operators/CIDRs can reach it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edgecache-admin-internal
+  namespace: edgecache
+  annotations:
+    kubernetes.io/ingress.class: "internal"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,192.168.0.0/16"
+spec:
+  rules:
+    - host: admin.edgecache.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port:
+                  number: 9000

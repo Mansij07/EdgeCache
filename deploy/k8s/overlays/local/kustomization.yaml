@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edgecache
+# Local kind/minikube overlay: the app (base) + dev infra in one apply.
+#   kubectl apply -k deploy/k8s/overlays/local
+resources:
+  - ../../base
+  - infra.yaml

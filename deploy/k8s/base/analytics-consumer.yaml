@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-consumer
+  namespace: edgecache
+  labels: { app: analytics-consumer }
+spec:
+  # Independent scaling from the control plane. Members of one Kafka consumer
+  # group; scaling up to the topic's partition count parallelizes consumption.
+  replicas: 1
+  selector:
+    matchLabels: { app: analytics-consumer }
+  template:
+    metadata:
+      labels: { app: analytics-consumer }
+    spec:
+      containers:
+        - name: analytics-consumer
+          image: edgecache-analytics-consumer:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BROKERS
+              value: "kafka:9092"
+            - name: KAFKA_TOPIC
+              value: "edgecache.access-log"
+            - name: KAFKA_GROUP_ID
+              value: "edgecache-analytics"
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: edgecache-secrets, key: DATABASE_URL } }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }

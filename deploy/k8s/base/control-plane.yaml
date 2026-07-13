@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: edgecache
+  labels: { app: control-plane }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: control-plane }
+  template:
+    metadata:
+      labels: { app: control-plane }
+    spec:
+      containers:
+        - name: control-plane
+          image: edgecache-control-plane:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 9000 }
+          env:
+            - name: PORT
+              value: "9000"
+            - name: ADMIN_API_KEY
+              valueFrom: { secretKeyRef: { name: edgecache-secrets, key: ADMIN_API_KEY } }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: edgecache-secrets, key: DATABASE_URL } }
+            - name: REDIS_URL
+              valueFrom: { secretKeyRef: { name: edgecache-secrets, key: REDIS_URL } }
+          readinessProbe:
+            httpGet: { path: /health, port: 9000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: edgecache
+  labels: { app: control-plane }
+spec:
+  selector: { app: control-plane }
+  ports:
+    - { name: http, port: 9000, targetPort: 9000 }

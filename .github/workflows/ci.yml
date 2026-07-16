@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  proxy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S proxy -B proxy/build -DCMAKE_BUILD_TYPE=Release -DEDGECACHE_KAFKA=OFF
+      - name: Build
+        run: cmake --build proxy/build -j"$(nproc)"
+      - name: Test
+        run: ctest --output-on-failure
+        working-directory: proxy/build
+
+  control-plane-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: control-plane/package-lock.json
+      - run: npm ci
+        working-directory: control-plane
+      - run: npm run typecheck
+        working-directory: control-plane
+      - run: npm test
+        working-directory: control-plane
+
+  analytics-consumer-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: analytics-consumer
+      - run: npm run typecheck
+        working-directory: analytics-consumer
+      - run: npm run build
+        working-directory: analytics-consumer
+
+  dummy-origin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: dummy-origin
+      - run: node --check server.js
+        working-directory: dummy-origin
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: proxy
+            context: proxy
+            build-args: ENABLE_KAFKA=ON
+          - service: control-plane
+            context: control-plane
+            build-args: ""
+          - service: analytics-consumer
+            context: analytics-consumer
+            build-args: ""
+          - service: dummy-origin
+            context: dummy-origin
+            build-args: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          build-args: ${{ matrix.build-args }}
+          push: false
+          tags: edgecache-${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

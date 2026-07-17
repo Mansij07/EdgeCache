@@ -11,6 +11,8 @@
 
 #include "net/Listener.h"
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -30,7 +32,7 @@ void sendResponse(int fd, int status, const std::string& reason,
         sent += static_cast<size_t>(n);
     }
 }
-}  // namespace
+}
 
 void MetricsServer::run() {
     std::string err;
@@ -39,7 +41,7 @@ void MetricsServer::run() {
         std::cerr << "[metrics] listener failed: " << err << std::endl;
         return;
     }
-    // Blocking accept with a short timeout so we can observe the shutdown flag.
+
     struct timeval tv{0, 200000};
     setsockopt(listenFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setNonBlocking(listenFd, false);
@@ -60,7 +62,6 @@ void MetricsServer::run() {
         ssize_t n = ::recv(fd, buf, sizeof(buf), 0);
         if (n > 0) reqbuf.assign(buf, static_cast<size_t>(n));
 
-        // Parse the request target from the first line.
         std::string method, target;
         {
             std::istringstream is(reqbuf);
@@ -85,4 +86,4 @@ void MetricsServer::run() {
     ::close(listenFd);
 }
 
-}  // namespace edgecache
+}

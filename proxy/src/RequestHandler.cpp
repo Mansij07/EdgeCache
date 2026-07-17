@@ -6,6 +6,8 @@
 
 #include "cache/CacheKey.h"
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -28,12 +30,10 @@ CacheEntry entryFrom(const HttpResponse& resp, const CacheDecision& d) {
     e.etag = resp.header("ETag");
     return e;
 }
-}  // namespace
+}
 
-OriginTarget RequestHandler::targetFor(const std::string& /*path*/) const {
-    // MVP: single default origin. Multi-origin routing (rule.originId ->
-    // registered origin host) is a documented extension point; the rule's TTL/SWR
-    // still apply via the policy regardless of which origin serves it.
+OriginTarget RequestHandler::targetFor(const std::string& ) const {
+
     OriginTarget t;
     t.host = cfg_.defaultOriginHost;
     t.port = cfg_.defaultOriginPort;
@@ -85,18 +85,16 @@ void RequestHandler::storeTiers(const HttpRequest& req, const HttpResponse& resp
     if (!d.cacheable) return;
     CacheKey key = CacheKey::fromRequest(req, targetFor(req.path).host);
     CacheEntry entry = entryFrom(resp, d);
-    cache.put(key.value, entry);                          // L1
-    if (l2_) l2_->put(key.value, entry, d.ttlSeconds);    // L2 write-through
+    cache.put(key.value, entry);
+    if (l2_) l2_->put(key.value, entry, d.ttlSeconds);
 }
 
 void RequestHandler::triggerRevalidation(const HttpRequest& req, const std::string& key,
                                          ShardedCache& cache) {
-    // Only one background refresh per key at a time (reuse the coalescing map).
-    auto acq = inflight_.acquire(key);
-    if (!acq.leader) return;  // a refresh (or a live fetch) is already underway
 
-    // Capture by value; all injected deps outlive the process, so referencing
-    // them from a detached thread is safe.
+    auto acq = inflight_.acquire(key);
+    if (!acq.leader) return;
+
     std::thread([this, req, key, &cache]() {
         OriginTarget target = targetFor(req.path);
         bool rejected = false;
@@ -105,7 +103,7 @@ void RequestHandler::triggerRevalidation(const HttpRequest& req, const std::stri
         bool ok = false;
         if (r.ok) {
             resp = r.response;
-            storeTiers(req, resp, cache);  // refresh both L1 and L2
+            storeTiers(req, resp, cache);
             ok = true;
         }
         inflight_.publish(key, resp, ok);
@@ -127,12 +125,12 @@ HttpResponse RequestHandler::handle(const HttpRequest& req, ShardedCache& cache)
         ev.path = req.path;
         ev.cacheKey = CacheKey::fromRequest(req, targetFor(req.path).host).value;
         ev.result = resp.header("X-Cache", "unknown");
-        // Normalize to lowercase result tokens for the analytics schema.
+
         for (auto& c : ev.result) c = static_cast<char>(::tolower(c));
         ev.status = resp.status;
         ev.latencyMs = latencyMs;
         ev.bytesServed = resp.body.size();
-        accessLog_->log(ev);  // non-blocking, may drop
+        accessLog_->log(ev);
     }
     return resp;
 }
@@ -140,7 +138,6 @@ HttpResponse RequestHandler::handle(const HttpRequest& req, ShardedCache& cache)
 HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache) {
     OriginTarget target = targetFor(req.path);
 
-    // Non-cacheable methods are proxied straight through (still circuit-guarded).
     if (!req.isCacheableMethod()) {
         metrics_.recordMiss();
         bool rejected = false;
@@ -162,7 +159,6 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
     CacheKey key = CacheKey::fromRequest(req, target.host);
     auto now = Clock::now();
 
-    // --- Cache lookup ---
     auto cached = cache.get(key.value);
     if (cached) {
         if (cached->isFresh(now)) {
@@ -176,8 +172,7 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
             return resp;
         }
         if (cached->isServeableStale(now)) {
-            // Stale-while-revalidate: serve the stale copy now, refresh in the
-            // background so exactly one fetch refreshes it (no stampede).
+
             metrics_.recordHit();
             metrics_.recordStaleServed();
             HttpResponse resp = cached->toResponse();
@@ -186,21 +181,18 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
             metrics_.recordBytesServed(resp.body.size());
             return resp;
         }
-        // Fully expired — fall through to a miss.
+
     }
 
-    // --- Miss path with request coalescing ---
     metrics_.recordMiss();
     auto acq = inflight_.acquire(key.value);
 
     if (acq.leader) {
-        // Consult the shared L2 tier before paying for an origin round-trip: a
-        // key another replica already fetched is served here without hitting
-        // origin, and promoted into this replica's L1 for subsequent hits.
+
         if (l2_) {
             if (auto l2entry = l2_->get(key.value)) {
                 metrics_.recordL2Hit();
-                cache.put(key.value, *l2entry);  // promote L2 -> L1
+                cache.put(key.value, *l2entry);
                 HttpResponse resp = l2entry->toResponse();
                 resp.headers["Age"] = "0";
                 decorate(resp, "HIT", cfg_, "l2");
@@ -218,11 +210,11 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
         bool success = false;
         if (r.ok) {
             resp = r.response;
-            storeTiers(req, resp, cache);  // populate both L1 and L2
+            storeTiers(req, resp, cache);
             decorate(resp, "MISS", cfg_, policy_.decide(req.path, resp).reason);
             success = true;
         } else {
-            // If we have a stale copy, prefer serving it over a hard error.
+
             if (cached && cached->isServeableStale(now)) {
                 resp = cached->toResponse();
                 decorate(resp, "STALE", cfg_, "origin-unavailable");
@@ -239,7 +231,6 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
         return resp;
     }
 
-    // Waiter: block on the leader's fetch instead of hitting origin ourselves.
     acq.slot->waitReady();
     HttpResponse resp;
     {
@@ -247,7 +238,7 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
         resp = acq.slot->response;
     }
     if (acq.slot->success) {
-        // Store the shared result so subsequent requests for this key hit cache.
+
         maybeStore(req, resp, cache);
     }
     decorate(resp, "MISS", cfg_, "coalesced");
@@ -255,4 +246,4 @@ HttpResponse RequestHandler::process(const HttpRequest& req, ShardedCache& cache
     return resp;
 }
 
-}  // namespace edgecache
+}

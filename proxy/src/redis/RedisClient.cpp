@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <cstring>
 
+using namespace std;
+
 namespace edgecache {
 
 std::string RedisConnection::encode(const std::vector<std::string>& args) {
@@ -79,7 +81,7 @@ bool RedisConnection::writeAll(const std::string& data) {
 }
 
 bool RedisConnection::fillBuffer(int timeoutMs) {
-    // Compact consumed prefix occasionally.
+
     if (rpos_ > 4096) {
         rbuf_.erase(0, rpos_);
         rpos_ = 0;
@@ -88,7 +90,7 @@ bool RedisConnection::fillBuffer(int timeoutMs) {
     pfd.fd = fd_;
     pfd.events = POLLIN;
     int rc = poll(&pfd, 1, timeoutMs);
-    if (rc == 0) return false;  // timeout
+    if (rc == 0) return false;
     if (rc < 0) {
         if (errno == EINTR) return false;
         close();
@@ -100,7 +102,7 @@ bool RedisConnection::fillBuffer(int timeoutMs) {
         rbuf_.append(buf, static_cast<size_t>(n));
         return true;
     }
-    if (n == 0) {  // peer closed
+    if (n == 0) {
         close();
         return false;
     }
@@ -122,11 +124,11 @@ bool RedisConnection::readLine(std::string& line, int timeoutMs) {
 }
 
 bool RedisConnection::readN(std::string& out, size_t n, int timeoutMs) {
-    while (rbuf_.size() - rpos_ < n + 2) {  // +2 for trailing CRLF
+    while (rbuf_.size() - rpos_ < n + 2) {
         if (!fillBuffer(timeoutMs)) return false;
     }
     out = rbuf_.substr(rpos_, n);
-    rpos_ += n + 2;  // skip CRLF
+    rpos_ += n + 2;
     return true;
 }
 
@@ -204,7 +206,7 @@ bool RedisConnection::subscribe(const std::vector<std::string>& channels) {
         close();
         return false;
     }
-    // Read the subscribe confirmations (one array reply per channel).
+
     for (size_t i = 0; i < channels.size(); ++i) {
         RedisReply r;
         if (!parseReply(r, 5000)) return false;
@@ -217,4 +219,4 @@ bool RedisConnection::readReply(RedisReply& out, int timeoutMs) {
     return parseReply(out, timeoutMs);
 }
 
-}  // namespace edgecache
+}

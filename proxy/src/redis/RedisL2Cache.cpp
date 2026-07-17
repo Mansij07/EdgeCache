@@ -3,6 +3,8 @@
 #include <chrono>
 #include <sstream>
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -12,14 +14,12 @@ uint64_t nowWallMs() {
                                      .count());
 }
 
-// Length-prefixed string: "<len>\n<bytes>\n". The trailing '\n' is a separator,
-// safe even when the payload itself contains newlines (we read exactly <len>).
 void writeStr(std::ostringstream& os, const std::string& s) {
     os << s.size() << '\n';
     os.write(s.data(), static_cast<std::streamsize>(s.size()));
     os << '\n';
 }
-}  // namespace
+}
 
 std::string RedisL2Cache::serialize(const CacheEntry& e) {
     std::ostringstream os;
@@ -71,7 +71,7 @@ bool RedisL2Cache::deserialize(const std::string& blob, CacheEntry& out, uint64_
         if (p + len > blob.size()) return false;
         s = blob.substr(p, len);
         p += len;
-        if (p >= blob.size() || blob[p] != '\n') return false;  // separator
+        if (p >= blob.size() || blob[p] != '\n') return false;
         p += 1;
         return true;
     };
@@ -114,18 +114,15 @@ std::optional<CacheEntry> RedisL2Cache::get(const std::string& cacheKey) {
 
     RedisReply r = conn_.command({"GET", keyFor(cacheKey)});
     if (r.isError()) {
-        conn_.close();  // drop a broken socket; reconnect next time
+        conn_.close();
         return std::nullopt;
     }
-    if (r.type != RedisReply::Type::Bulk) return std::nullopt;  // Nil => miss
+    if (r.type != RedisReply::Type::Bulk) return std::nullopt;
 
     CacheEntry e;
     uint64_t storedAtWallMs = 0, ttl = 0;
     if (!deserialize(r.str, e, storedAtWallMs, ttl)) return std::nullopt;
 
-    // Freshness from wall clock (storedAt can't be a local steady_clock value for
-    // an object shared across replicas). Redis' own TTL should already have
-    // expired stale entries; this is a clock-skew guard.
     uint64_t now = nowWallMs();
     uint64_t elapsedMs = now > storedAtWallMs ? now - storedAtWallMs : 0;
     if (elapsedMs >= ttl * 1000) return std::nullopt;
@@ -146,4 +143,4 @@ void RedisL2Cache::put(const std::string& cacheKey, const CacheEntry& entry, uin
     if (r.isError()) conn_.close();
 }
 
-}  // namespace edgecache
+}

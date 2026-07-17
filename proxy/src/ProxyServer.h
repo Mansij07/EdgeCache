@@ -20,15 +20,10 @@
 
 namespace edgecache {
 
-// Assembles and runs a full proxy replica: N thread-per-core event loops that
-// all share one key-sharded cache, the shared request-handling pipeline, the
-// Redis coordinator (rule sync + purge subscription), and the metrics/admin
-// server.
 class ProxyServer {
 public:
     explicit ProxyServer(Config cfg);
 
-    // Blocks until stop() is called (typically from a signal handler).
     void run();
     void stop();
 
@@ -49,7 +44,7 @@ private:
     RuleOverridePolicy policy_;
 
     std::unique_ptr<AccessLogSink> accessLog_;
-    std::unique_ptr<RedisL2Cache> l2_;  // shared L2 tier; null when disabled
+    std::unique_ptr<RedisL2Cache> l2_;
     std::unique_ptr<RequestHandler> handler_;
     std::unique_ptr<RedisCoordinator> redis_;
 
@@ -58,4 +53,4 @@ private:
     std::thread metricsThread_;
 };
 
-}  // namespace edgecache
+}

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+using namespace std;
+
 namespace edgecache {
 
 bool RuleStore::patternMatches(const std::string& pattern, const std::string& path) {
@@ -14,7 +16,7 @@ bool RuleStore::patternMatches(const std::string& pattern, const std::string& pa
 }
 
 void RuleStore::replaceAll(std::vector<Rule> rules) {
-    // Sort so the most specific (longest) pattern is checked first.
+
     std::sort(rules.begin(), rules.end(), [](const Rule& a, const Rule& b) {
         return a.pathPattern.size() > b.pathPattern.size();
     });
@@ -36,4 +38,4 @@ size_t RuleStore::size() const {
     return rules_.size();
 }
 
-}  // namespace edgecache
+}

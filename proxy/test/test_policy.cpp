@@ -3,6 +3,8 @@
 #include "redis/RuleStore.h"
 #include "test_framework.h"
 
+using namespace std;
+
 using namespace edgecache;
 
 static HttpResponse resp(int status, const std::string& cacheControl) {
@@ -50,7 +52,6 @@ TEST(rule_override_takes_precedence) {
     HeaderBasedPolicy header(30);
     RuleOverridePolicy p(store, header);
 
-    // Origin says no-store, but a matching rule forces caching.
     auto d = p.decide("/api/thing", resp(200, "no-store"));
     CHECK(d.cacheable);
     CHECK_EQ(d.ttlSeconds, static_cast<uint64_t>(300));
@@ -64,7 +65,7 @@ TEST(rule_override_falls_back_when_no_match) {
     RuleOverridePolicy p(store, header);
     auto d = p.decide("/other", resp(200, "max-age=15"));
     CHECK(d.cacheable);
-    CHECK_EQ(d.ttlSeconds, static_cast<uint64_t>(15));  // from origin header
+    CHECK_EQ(d.ttlSeconds, static_cast<uint64_t>(15));
 }
 
 TEST(rule_ttl_zero_means_no_cache) {

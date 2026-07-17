@@ -3,12 +3,14 @@
 #include <functional>
 #include <utility>
 
+using namespace std;
+
 namespace edgecache {
 
 ShardedCache::ShardedCache(uint64_t maxBytes, unsigned shards) {
     if (shards == 0) shards = 1;
     uint64_t perShard = maxBytes / shards;
-    if (perShard == 0) perShard = maxBytes;  // tiny budgets: don't zero a shard
+    if (perShard == 0) perShard = maxBytes;
     shards_.reserve(shards);
     for (unsigned i = 0; i < shards; ++i) {
         shards_.push_back(std::make_unique<LRUCache>(perShard));
@@ -60,4 +62,4 @@ uint64_t ShardedCache::evictions() const {
     return n;
 }
 
-}  // namespace edgecache
+}

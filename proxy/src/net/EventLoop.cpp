@@ -10,6 +10,8 @@
 
 #include "net/Listener.h"
 
+using namespace std;
+
 namespace edgecache {
 
 EventLoop::EventLoop(std::string host, uint16_t port,
@@ -71,7 +73,6 @@ void EventLoop::onReadable(int epfd, Conn& c) {
         }
     }
 
-    // Parse and handle all complete requests currently buffered (pipelining).
     while (true) {
         HttpRequest req;
         auto st = c.parser.parse(req);
@@ -93,7 +94,7 @@ void EventLoop::onReadable(int epfd, Conn& c) {
 
     int fd = c.fd;
     bool wantClose = peerClosed;
-    if (!flush(epfd, c)) return;  // c was closed & erased during flush
+    if (!flush(epfd, c)) return;
 
     if (wantClose && c.outBuf.empty()) {
         closeConn(epfd, fd);
@@ -109,14 +110,14 @@ bool EventLoop::flush(int epfd, Conn& c) {
         } else {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                updateEpollOut(epfd, c, true);  // finish writing when writable
+                updateEpollOut(epfd, c, true);
                 return true;
             }
             closeConn(epfd, c.fd);
             return false;
         }
     }
-    // Fully flushed.
+
     c.outBuf.clear();
     c.outOff = 0;
     updateEpollOut(epfd, c, false);
@@ -170,7 +171,7 @@ bool EventLoop::run() {
             }
             if (events[i].events & EPOLLOUT) {
                 flush(epfd, c);
-                if (conns_.find(fd) == conns_.end()) continue;  // closed during flush
+                if (conns_.find(fd) == conns_.end()) continue;
             }
             if (events[i].events & EPOLLIN) {
                 onReadable(epfd, c);
@@ -186,4 +187,4 @@ bool EventLoop::run() {
     return true;
 }
 
-}  // namespace edgecache
+}

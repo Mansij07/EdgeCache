@@ -1,6 +1,8 @@
 #include "redis/RedisCoordinator.h"
 #include "test_framework.h"
 
+using namespace std;
+
 using namespace edgecache;
 
 TEST(parse_rule_json_full) {

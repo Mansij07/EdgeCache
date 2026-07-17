@@ -1,9 +1,11 @@
 #include "cache/LRUCache.h"
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
-// Extract the path portion from a canonical cache key "METHOD|host|path[?query]".
+
 std::string pathOfKey(const std::string& key) {
     size_t p1 = key.find('|');
     if (p1 == std::string::npos) return key;
@@ -14,7 +16,7 @@ std::string pathOfKey(const std::string& key) {
     if (q == std::string::npos) return key.substr(start);
     return key.substr(start, q - start);
 }
-}  // namespace
+}
 
 bool purgeMatches(const std::string& pattern, const std::string& cacheKey) {
     std::string path = pathOfKey(cacheKey);
@@ -30,7 +32,7 @@ std::optional<CacheEntry> LRUCache::get(const std::string& key) {
     std::lock_guard<std::mutex> lk(mutex_);
     auto it = index_.find(key);
     if (it == index_.end()) return std::nullopt;
-    // Move to front (most recently used).
+
     order_.splice(order_.begin(), order_, it->second);
     return it->second->entry;
 }
@@ -117,4 +119,4 @@ size_t LRUCache::count() const {
     return index_.size();
 }
 
-}  // namespace edgecache
+}

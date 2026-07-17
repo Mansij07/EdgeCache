@@ -11,8 +11,6 @@
 
 namespace edgecache {
 
-// Lazily creates and owns one CircuitBreaker per origin host. Shared across all
-// worker threads (breakers are internally locked).
 class CircuitBreakerRegistry {
 public:
     explicit CircuitBreakerRegistry(const Config& cfg) : cfg_(cfg) {}
@@ -43,4 +41,4 @@ private:
     std::map<std::string, std::unique_ptr<CircuitBreaker>> breakers_;
 };
 
-}  // namespace edgecache
+}

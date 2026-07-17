@@ -1,5 +1,7 @@
 #include "test_framework.h"
 
+using namespace std;
+
 int g_testFailures = 0;
 
 int main() {

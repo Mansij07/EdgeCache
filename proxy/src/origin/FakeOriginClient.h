@@ -8,9 +8,6 @@
 
 namespace edgecache {
 
-// Test double: returns canned responses and counts how many origin fetches were
-// actually issued. This counter is what the concurrency test asserts on to prove
-// request coalescing collapses N concurrent misses into exactly one fetch.
 class FakeOriginClient : public OriginClient {
 public:
     using Responder = std::function<OriginResult(const HttpRequest&, const OriginTarget&)>;
@@ -30,4 +27,4 @@ private:
     std::atomic<uint64_t> fetches_{0};
 };
 
-}  // namespace edgecache
+}

@@ -1,6 +1,8 @@
 #include "cache/CacheKey.h"
 #include "test_framework.h"
 
+using namespace std;
+
 using namespace edgecache;
 
 TEST(query_normalization_sorts_params) {
@@ -35,8 +37,7 @@ TEST(cache_key_differs_by_method_and_host) {
 }
 
 TEST(cache_key_excludes_arbitrary_headers) {
-    // Poisoning defense: two requests differing only by an attacker header must
-    // map to the same key (headers are never mixed into the key at MVP).
+
     HttpRequest a;
     a.method = "GET";
     a.path = "/p";

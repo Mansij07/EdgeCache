@@ -1,5 +1,7 @@
 #include "origin/CircuitBreaker.h"
 
+using namespace std;
+
 namespace edgecache {
 
 bool CircuitBreaker::allowRequest() {
@@ -12,7 +14,7 @@ bool CircuitBreaker::allowRequest() {
                                Clock::now() - openedAt_)
                                .count();
             if (elapsed >= openMs_) {
-                // Move to half-open and let this request be a probe.
+
                 state_ = State::HalfOpen;
                 halfOpenProbes_ = 1;
                 return true;
@@ -70,4 +72,4 @@ const char* CircuitBreaker::stateName() const {
     return "unknown";
 }
 
-}  // namespace edgecache
+}

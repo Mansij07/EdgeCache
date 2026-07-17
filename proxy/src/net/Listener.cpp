@@ -9,6 +9,8 @@
 #include <cerrno>
 #include <cstring>
 
+using namespace std;
+
 namespace edgecache {
 
 bool setNonBlocking(int fd, bool nb) {
@@ -65,4 +67,4 @@ int createReusePortListener(const std::string& host, uint16_t port, std::string&
     return fd;
 }
 
-}  // namespace edgecache
+}

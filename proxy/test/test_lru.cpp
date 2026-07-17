@@ -1,6 +1,8 @@
 #include "cache/LRUCache.h"
 #include "test_framework.h"
 
+using namespace std;
+
 using namespace edgecache;
 
 static CacheEntry makeEntry(const std::string& body, uint64_t ttl = 60) {
@@ -23,13 +25,13 @@ TEST(lru_get_put_basic) {
 }
 
 TEST(lru_evicts_least_recently_used) {
-    // Small budget so only ~2 small entries fit.
+
     LRUCache c(300);
     c.put("a", makeEntry(std::string(80, 'a')));
     c.put("b", makeEntry(std::string(80, 'b')));
-    // Touch 'a' so 'b' becomes LRU.
+
     CHECK(c.get("a").has_value());
-    c.put("c", makeEntry(std::string(80, 'c')));  // should evict 'b'
+    c.put("c", makeEntry(std::string(80, 'c')));
     CHECK(c.get("a").has_value());
     CHECK(!c.get("b").has_value());
     CHECK(c.get("c").has_value());
@@ -53,7 +55,7 @@ TEST(lru_purge_pattern) {
     CHECK_EQ(n, static_cast<size_t>(2));
     CHECK(!c.get("GET|h|/api/products/1").has_value());
     CHECK(c.get("GET|h|/api/users/9").has_value());
-    // Idempotent: purging again removes nothing.
+
     CHECK_EQ(c.purge("/api/products/*"), static_cast<size_t>(0));
 }
 
@@ -72,7 +74,7 @@ TEST(purge_matches_helper) {
     CHECK(purgeMatches("/a/b", "GET|host|/a/b"));
     CHECK(!purgeMatches("/a/b", "GET|host|/a/c"));
     CHECK(purgeMatches("*", "ANY|thing|/z"));
-    // Query string must not defeat a path match.
+
     CHECK(purgeMatches("/a/b", "GET|host|/a/b?x=1"));
 }
 
@@ -80,7 +82,7 @@ TEST(lru_sweep_expired) {
     LRUCache c(1 << 20);
     CacheEntry fresh = makeEntry("fresh", 60);
     CacheEntry expired = makeEntry("old", 0);
-    expired.storedAt = Clock::now() - std::chrono::seconds(10);  // ttl 0, swr 0 -> gone
+    expired.storedAt = Clock::now() - std::chrono::seconds(10);
     c.put("fresh", fresh);
     c.put("expired", expired);
     size_t removed = c.sweepExpired();

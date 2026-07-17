@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <sstream>
 
+using namespace std;
+
 namespace edgecache {
 
 bool CaseInsensitiveLess::operator()(const std::string& a, const std::string& b) const {
@@ -43,7 +45,7 @@ const char* reasonFor(int status) {
         default: return "OK";
     }
 }
-}  // namespace
+}
 
 std::string HttpRequest::header(const std::string& name, const std::string& def) const {
     auto it = headers.find(name);
@@ -71,7 +73,7 @@ std::string HttpResponse::serialize(bool keepAlive) const {
        << (reason.empty() ? reasonFor(status) : reason) << "\r\n";
 
     for (const auto& kv : headers) {
-        // We manage these below to keep the framing correct.
+
         if (iequals(kv.first, "Connection") || iequals(kv.first, "Content-Length") ||
             iequals(kv.first, "Transfer-Encoding"))
             continue;
@@ -98,10 +100,10 @@ void RequestParser::feed(const char* data, size_t len) { buffer_.append(data, le
 void RequestParser::reset() { buffer_.clear(); }
 
 RequestParser::State RequestParser::parse(HttpRequest& out) {
-    // Find end of header block.
+
     size_t headerEnd = buffer_.find("\r\n\r\n");
     if (headerEnd == std::string::npos) {
-        // Guard against unbounded header growth (simple DoS protection).
+
         if (buffer_.size() > 64 * 1024) return State::Error;
         return State::NeedMore;
     }
@@ -113,7 +115,6 @@ RequestParser::State RequestParser::parse(HttpRequest& out) {
     if (!std::getline(is, line)) return State::Error;
     if (!line.empty() && line.back() == '\r') line.pop_back();
 
-    // Request line: METHOD SP target SP version
     {
         std::istringstream ls(line);
         HttpRequest req;
@@ -126,14 +127,12 @@ RequestParser::State RequestParser::parse(HttpRequest& out) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty()) break;
         size_t colon = line.find(':');
-        if (colon == std::string::npos) continue;  // tolerate malformed header line
+        if (colon == std::string::npos) continue;
         std::string name = trim(line.substr(0, colon));
         std::string value = trim(line.substr(colon + 1));
         if (!name.empty()) out.headers[name] = value;
     }
 
-    // Body framing via Content-Length (chunked bodies for requests are not
-    // expected for a caching GET/HEAD proxy; reject to stay safe).
     size_t bodyLen = 0;
     if (out.headers.count("Transfer-Encoding")) return State::Error;
     auto clIt = out.headers.find("Content-Length");
@@ -150,7 +149,6 @@ RequestParser::State RequestParser::parse(HttpRequest& out) {
 
     out.body = buffer_.substr(headerEnd + 4, bodyLen);
 
-    // Split target into path + query.
     size_t q = out.target.find('?');
     if (q == std::string::npos) {
         out.path = out.target;
@@ -160,9 +158,8 @@ RequestParser::State RequestParser::parse(HttpRequest& out) {
         out.query = out.target.substr(q + 1);
     }
 
-    // Consume the parsed request from the buffer (leave any pipelined bytes).
     buffer_.erase(0, total);
     return State::Complete;
 }
 
-}  // namespace edgecache
+}

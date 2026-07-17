@@ -7,6 +7,8 @@
 #include "net/EventLoop.h"
 #ifdef EDGECACHE_KAFKA
 #include "analytics/KafkaAccessLogSink.h"
+
+using namespace std;
 #endif
 
 namespace edgecache {
@@ -16,10 +18,9 @@ ProxyServer::ProxyServer(Config cfg)
       breakers_(cfg_),
       headerPolicy_(cfg_.defaultTtlSeconds),
       policy_(ruleStore_, headerPolicy_),
-      // One shared cache striped across `workerThreads` shards (keyed by cache
-      // key), so any worker serves a given key from the same shard.
+
       cache_(cfg_.maxCacheBytes, cfg_.workerThreads ? cfg_.workerThreads : 1) {
-    // Access-log sink: Kafka producer when compiled in and configured, else no-op.
+
 #ifdef EDGECACHE_KAFKA
     if (!cfg_.kafkaBrokers.empty()) {
         auto sink = std::make_unique<KafkaAccessLogSink>(cfg_.kafkaBrokers, cfg_.kafkaTopic);
@@ -30,7 +31,6 @@ ProxyServer::ProxyServer(Config cfg)
 #endif
     if (!accessLog_) accessLog_ = std::make_unique<NullAccessLogSink>();
 
-    // Shared Redis L2 tier (advanced): constructed only when enabled.
     if (cfg_.l2Enabled) {
         l2_ = std::make_unique<RedisL2Cache>(cfg_);
         std::cerr << "[proxy] L2 cache tier enabled (prefix=" << cfg_.l2KeyPrefix << ")" << std::endl;
@@ -67,26 +67,19 @@ void ProxyServer::run() {
 
     redis_->start();
 
-    // Metrics/admin server on its own thread. Readiness is intentionally NOT
-    // gated on Redis — the proxy keeps serving from L1 during a Redis outage, so
-    // it must stay in rotation. Redis health is exposed via the
-    // edgecache_redis_connected metric instead. `readyFn` reports ready whenever
-    // the proxy is running.
     metricsThread_ = std::thread([this] {
         MetricsServer server(cfg_.listenHost, cfg_.metricsPort, metrics_,
                              [this] { return running_.load(); }, &running_);
         server.run();
     });
 
-    // Worker threads: all share the one key-sharded cache and run an epoll loop.
     for (unsigned int i = 0; i < cfg_.workerThreads; ++i) {
         workers_.emplace_back([this, i] {
             EventLoop loop(
                 cfg_.listenHost, cfg_.listenPort,
                 [this](const HttpRequest& req) { return handler_->handle(req, cache_); },
                 &running_);
-            // Periodically sweep hard-expired entries so idle keys don't linger.
-            // Only worker 0 runs it — sweepExpired() already covers every shard.
+
             if (i == 0) {
                 auto last = std::chrono::steady_clock::now();
                 loop.setOnTick([this, &last] {
@@ -115,4 +108,4 @@ void ProxyServer::run() {
 
 void ProxyServer::stop() { running_.store(false); }
 
-}  // namespace edgecache
+}

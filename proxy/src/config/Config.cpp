@@ -4,6 +4,8 @@
 #include <iostream>
 #include <thread>
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -29,7 +31,7 @@ int envInt(const char* key, int def) {
         return def;
     }
 }
-}  // namespace
+}
 
 Config Config::fromEnv() {
     Config c;
@@ -62,7 +64,6 @@ Config Config::fromEnv() {
     c.ruleUpdateChannel = envStr("EDGECACHE_RULE_UPDATE_CHANNEL", c.ruleUpdateChannel);
     c.rulePollIntervalSeconds = envInt("EDGECACHE_RULE_POLL_SECONDS", c.rulePollIntervalSeconds);
 
-    // L2 accepts ON/1/true (case-sensitive on the common forms) to enable.
     {
         std::string v = envStr("EDGECACHE_L2_ENABLED", c.l2Enabled ? "ON" : "OFF");
         c.l2Enabled = (v == "ON" || v == "on" || v == "1" || v == "true" || v == "TRUE");
@@ -85,4 +86,4 @@ void Config::log() const {
               << " l2=" << (l2Enabled ? "on" : "off") << std::endl;
 }
 
-}  // namespace edgecache
+}

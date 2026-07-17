@@ -1,5 +1,7 @@
 #include "coalesce/InFlightRegistry.h"
 
+using namespace std;
+
 namespace edgecache {
 
 InFlightRegistry::Acquisition InFlightRegistry::acquire(const std::string& key) {
@@ -10,7 +12,7 @@ InFlightRegistry::Acquisition InFlightRegistry::acquire(const std::string& key) 
         inflight_.emplace(key, slot);
         return {true, slot};
     }
-    // A fetch is already in progress for this key — join it as a waiter.
+
     coalesced_.fetch_add(1, std::memory_order_relaxed);
     return {false, it->second};
 }
@@ -22,7 +24,7 @@ void InFlightRegistry::publish(const std::string& key, const HttpResponse& resp,
         auto it = inflight_.find(key);
         if (it == inflight_.end()) return;
         slot = it->second;
-        inflight_.erase(it);  // clear the marker so future misses start fresh
+        inflight_.erase(it);
     }
     {
         std::lock_guard<std::mutex> lk(slot->m);
@@ -33,4 +35,4 @@ void InFlightRegistry::publish(const std::string& key, const HttpResponse& resp,
     slot->cv.notify_all();
 }
 
-}  // namespace edgecache
+}

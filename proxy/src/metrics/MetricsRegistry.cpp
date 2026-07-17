@@ -2,10 +2,9 @@
 
 #include <sstream>
 
-namespace edgecache {
+using namespace std;
 
-// Note: kBounds/kBuckets are static constexpr members — implicitly inline in
-// C++17, so no out-of-line definition is required here.
+namespace edgecache {
 
 void MetricsRegistry::observeOriginLatency(double seconds) {
     std::lock_guard<std::mutex> lk(histMutex_);
@@ -58,7 +57,6 @@ std::string MetricsRegistry::render() const {
     gauge("edgecache_redis_connected", "1 if Redis is currently reachable",
           redisConnectedFn() ? 1 : 0);
 
-    // Circuit breaker state per origin, one-hot encoded.
     os << "# HELP edgecache_circuit_breaker_state Circuit breaker state (1=active)\n";
     os << "# TYPE edgecache_circuit_breaker_state gauge\n";
     for (const auto& [origin, state] : circuitStatesFn()) {
@@ -68,7 +66,6 @@ std::string MetricsRegistry::render() const {
         }
     }
 
-    // Origin latency histogram.
     {
         std::lock_guard<std::mutex> lk(histMutex_);
         os << "# HELP edgecache_origin_latency_seconds Origin fetch latency\n";
@@ -85,4 +82,4 @@ std::string MetricsRegistry::render() const {
     return os.str();
 }
 
-}  // namespace edgecache
+}

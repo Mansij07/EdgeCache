@@ -5,16 +5,18 @@
 #include "ProxyServer.h"
 #include "config/Config.h"
 
+using namespace std;
+
 namespace {
 edgecache::ProxyServer* g_server = nullptr;
 
 void handleSignal(int) {
     if (g_server) g_server->stop();
 }
-}  // namespace
+}
 
 int main() {
-    // Never die from a write to a closed socket.
+
     std::signal(SIGPIPE, SIG_IGN);
 
     edgecache::Config cfg = edgecache::Config::fromEnv();

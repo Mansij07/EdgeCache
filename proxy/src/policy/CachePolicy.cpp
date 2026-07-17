@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cctype>
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -12,13 +14,11 @@ std::string lower(std::string s) {
     return s;
 }
 
-// Returns true if `directive` is present in the Cache-Control value. If it has
-// an "=<num>" form, its numeric value is written to `outValue`.
 bool hasDirective(const std::string& cc, const std::string& directive, long* outValue) {
     std::string low = lower(cc);
     size_t pos = 0;
     while ((pos = low.find(directive, pos)) != std::string::npos) {
-        // Ensure token boundary before.
+
         bool boundaryBefore = (pos == 0) || low[pos - 1] == ',' || low[pos - 1] == ' ';
         size_t after = pos + directive.size();
         char nextCh = after < low.size() ? low[after] : '\0';
@@ -54,9 +54,9 @@ bool statusCacheable(int status) {
             return false;
     }
 }
-}  // namespace
+}
 
-CacheDecision HeaderBasedPolicy::decide(const std::string& /*path*/,
+CacheDecision HeaderBasedPolicy::decide(const std::string& ,
                                         const HttpResponse& resp) const {
     CacheDecision d;
     if (!statusCacheable(resp.status)) {
@@ -75,15 +75,14 @@ CacheDecision HeaderBasedPolicy::decide(const std::string& /*path*/,
         return d;
     }
     if (hasDirective(cc, "no-cache", nullptr)) {
-        // no-cache technically means "revalidate before use"; we treat as
-        // non-cacheable at MVP (no conditional revalidation yet).
+
         d.reason = "no-cache";
         return d;
     }
 
     long ttl = -1;
     if (hasDirective(cc, "s-maxage", &v)) {
-        ttl = v;  // shared-cache directive wins for us
+        ttl = v;
     } else if (hasDirective(cc, "max-age", &v)) {
         ttl = v;
     }
@@ -105,4 +104,4 @@ CacheDecision HeaderBasedPolicy::decide(const std::string& /*path*/,
     return d;
 }
 
-}  // namespace edgecache
+}

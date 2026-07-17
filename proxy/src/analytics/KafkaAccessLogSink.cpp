@@ -8,14 +8,15 @@
 #include <iostream>
 #include <sstream>
 
+using namespace std;
+
 namespace edgecache {
 
 KafkaAccessLogSink::KafkaAccessLogSink(const std::string& brokers, const std::string& topic) {
     char errstr[512];
     rd_kafka_conf_t* conf = rd_kafka_conf_new();
     rd_kafka_conf_set(conf, "bootstrap.servers", brokers.c_str(), errstr, sizeof(errstr));
-    // Bound the producer's memory so it can never grow unboundedly if the broker
-    // is unreachable — excess events are dropped, by design.
+
     rd_kafka_conf_set(conf, "queue.buffering.max.messages", "100000", errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "queue.buffering.max.ms", "200", errstr, sizeof(errstr));
 
@@ -46,13 +47,13 @@ KafkaAccessLogSink::~KafkaAccessLogSink() {
 
 void KafkaAccessLogSink::pollLoop() {
     while (running_.load()) {
-        rd_kafka_poll(rk_, 200);  // serve delivery reports; never touches request path
+        rd_kafka_poll(rk_, 200);
     }
 }
 
 void KafkaAccessLogSink::log(const AccessLogEvent& ev) noexcept {
     if (!rk_ || !topic_) return;
-    // Serialize to compact JSON.
+
     std::ostringstream os;
     os << "{\"timestamp\":" << ev.timestampMs << ",\"replicaId\":\"" << ev.replicaId
        << "\",\"path\":\"" << ev.path << "\",\"cacheKey\":\"" << ev.cacheKey
@@ -64,10 +65,10 @@ void KafkaAccessLogSink::log(const AccessLogEvent& ev) noexcept {
                               const_cast<char*>(payload.data()), payload.size(),
                               ev.path.data(), ev.path.size(), nullptr);
     if (rc == -1) {
-        // Queue full or broker down: drop it. This is the acceptable loss.
+
         dropped_.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
-}  // namespace edgecache
-#endif  // EDGECACHE_KAFKA
+}
+#endif

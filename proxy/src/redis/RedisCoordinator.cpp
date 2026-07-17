@@ -4,11 +4,12 @@
 #include <cstdlib>
 #include <iostream>
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
-// Extract the numeric or string value for `key` from a flat JSON object.
-// Returns empty string if not found. Handles both "key":123 and "key":"abc".
+
 std::string jsonField(const std::string& json, const std::string& key) {
     std::string needle = "\"" + key + "\"";
     size_t p = json.find(needle);
@@ -36,7 +37,7 @@ uint64_t toU64(const std::string& s, uint64_t def = 0) {
         return def;
     }
 }
-}  // namespace
+}
 
 Rule parseRuleJson(const std::string& pathPattern, const std::string& json) {
     Rule r;
@@ -92,10 +93,10 @@ void RedisCoordinator::subscriberLoop() {
 
         RedisReply msg;
         if (!conn.readReply(msg, 1000)) {
-            if (!conn.connected()) continue;  // disconnected -> reconnect next loop
-            continue;                          // timeout -> just loop
+            if (!conn.connected()) continue;
+            continue;
         }
-        // Pub/sub message shape: ["message", <channel>, <payload>]
+
         if (msg.type == RedisReply::Type::Array && msg.elements.size() == 3 &&
             msg.elements[0].str == "message") {
             const std::string& channel = msg.elements[1].str;
@@ -114,9 +115,7 @@ void RedisCoordinator::subscriberLoop() {
 }
 
 void RedisCoordinator::pollerLoop() {
-    // Fast liveness heartbeat: how often to PING Redis so `connected_` (exposed
-    // as the edgecache_redis_connected metric) reflects reality quickly — rather
-    // than only as fast as the much slower rule-reload cadence below.
+
     constexpr int kPingIntervalMs = 1000;
 
     RedisConnection conn(cfg_.redisHost, cfg_.redisPort, cfg_.redisPassword);
@@ -134,9 +133,6 @@ void RedisCoordinator::pollerLoop() {
 
         auto now = std::chrono::steady_clock::now();
 
-        // Heartbeat: a cheap PING probes the connection actively. A dead peer
-        // (e.g. Redis stopped) fails the PING, so connected_ drops within ~1s
-        // instead of waiting up to rulePollIntervalSeconds for the next reload.
         if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastPing).count() >=
             kPingIntervalMs) {
             RedisReply pong = conn.command({"PING"});
@@ -145,7 +141,7 @@ void RedisCoordinator::pollerLoop() {
                 connected_.store(true);
             } else {
                 connected_.store(false);
-                conn.close();  // force a clean reconnect on the next iteration
+                conn.close();
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
                 continue;
             }
@@ -159,7 +155,7 @@ void RedisCoordinator::pollerLoop() {
                 lastPoll = now;
             } else {
                 connected_.store(false);
-                conn.close();  // drop the dead socket so we reconnect cleanly
+                conn.close();
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -167,4 +163,4 @@ void RedisCoordinator::pollerLoop() {
     conn.close();
 }
 
-}  // namespace edgecache
+}

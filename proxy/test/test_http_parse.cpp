@@ -1,6 +1,8 @@
 #include "http/Http.h"
 #include "test_framework.h"
 
+using namespace std;
+
 using namespace edgecache;
 
 TEST(parse_simple_get) {

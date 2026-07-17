@@ -1,6 +1,5 @@
 #pragma once
-// Tiny zero-dependency test framework: TEST() registers a case, CHECK/CHECK_EQ
-// record failures. test_main.cpp runs every registered case and reports.
+
 #include <functional>
 #include <iostream>
 #include <string>

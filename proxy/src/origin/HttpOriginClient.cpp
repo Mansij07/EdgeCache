@@ -13,6 +13,8 @@
 #include <cstring>
 #include <sstream>
 
+using namespace std;
+
 namespace edgecache {
 
 namespace {
@@ -27,7 +29,6 @@ int setNonBlocking(int fd, bool nb) {
     return fcntl(fd, F_SETFL, flags);
 }
 
-// Connect with a timeout. Returns a connected fd or -1.
 int connectWithTimeout(const OriginTarget& t, std::string& err) {
     struct addrinfo hints{};
     hints.ai_family = AF_UNSPEC;
@@ -100,8 +101,6 @@ bool sendAll(int fd, const std::string& data) {
     return true;
 }
 
-// Parse a raw HTTP response buffer into an HttpResponse. Body is everything
-// after the header block (origin used Connection: close so EOF frames it).
 bool parseResponse(const std::string& raw, HttpResponse& out) {
     size_t headerEnd = raw.find("\r\n\r\n");
     if (headerEnd == std::string::npos) return false;
@@ -133,7 +132,7 @@ bool parseResponse(const std::string& raw, HttpResponse& out) {
         std::string name = line.substr(0, colon);
         std::string value = line.substr(colon + 1);
         while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) value.erase(0, 1);
-        // Drop hop-by-hop headers we re-manage on the way out.
+
         if (name == "Connection" || name == "Transfer-Encoding" ||
             name == "Content-Length" || name == "Keep-Alive")
             continue;
@@ -144,7 +143,7 @@ bool parseResponse(const std::string& raw, HttpResponse& out) {
     return true;
 }
 
-}  // namespace
+}
 
 OriginResult HttpOriginClient::fetch(const HttpRequest& req, const OriginTarget& target) {
     OriginResult result;
@@ -157,7 +156,6 @@ OriginResult HttpOriginClient::fetch(const HttpRequest& req, const OriginTarget&
         return result;
     }
 
-    // Read timeout on the socket.
     struct timeval tv;
     tv.tv_sec = target.readTimeoutMs / 1000;
     tv.tv_usec = (target.readTimeoutMs % 1000) * 1000;
@@ -165,8 +163,6 @@ OriginResult HttpOriginClient::fetch(const HttpRequest& req, const OriginTarget&
     int one = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
 
-    // Build the upstream request. HTTP/1.0 + Connection: close lets the origin
-    // frame the body by closing the connection — simplest robust framing.
     std::ostringstream os;
     os << req.method << ' ' << req.target << " HTTP/1.0\r\n";
     os << "Host: " << target.host << "\r\n";
@@ -193,9 +189,9 @@ OriginResult HttpOriginClient::fetch(const HttpRequest& req, const OriginTarget&
         ssize_t n = ::recv(fd, buf, sizeof(buf), 0);
         if (n > 0) {
             raw.append(buf, static_cast<size_t>(n));
-            if (raw.size() > 32ull * 1024 * 1024) break;  // 32 MiB safety cap
+            if (raw.size() > 32ull * 1024 * 1024) break;
         } else if (n == 0) {
-            break;  // origin closed — full response received
+            break;
         } else {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -219,4 +215,4 @@ OriginResult HttpOriginClient::fetch(const HttpRequest& req, const OriginTarget&
     return result;
 }
 
-}  // namespace edgecache
+}

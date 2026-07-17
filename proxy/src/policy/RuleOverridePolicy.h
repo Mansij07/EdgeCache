@@ -4,11 +4,6 @@
 
 namespace edgecache {
 
-// Decorator/Strategy: consults the RuleStore first. If a path-pattern rule
-// matches, its TTL/SWR take precedence over the origin's Cache-Control headers
-// (the control plane is authoritative for those paths). Otherwise it delegates
-// to the wrapped header-based policy. A matching rule with ttl==0 is treated as
-// "explicitly do not cache".
 class RuleOverridePolicy : public CachePolicy {
 public:
     RuleOverridePolicy(const RuleStore& rules, HeaderBasedPolicy inner)
@@ -23,9 +18,7 @@ public:
                 d.reason = "rule-no-cache";
                 return d;
             }
-            // Rule overrides even a permissive origin — but we still refuse to
-            // cache genuinely uncacheable statuses (e.g. 500) to avoid pinning
-            // an error response.
+
             if (resp.status >= 500) {
                 d.reason = "rule-but-server-error";
                 return d;
@@ -44,4 +37,4 @@ private:
     HeaderBasedPolicy inner_;
 };
 
-}  // namespace edgecache
+}

@@ -4,6 +4,8 @@
 #include <sstream>
 #include <vector>
 
+using namespace std;
+
 namespace edgecache {
 
 std::string normalizeQuery(const std::string& rawQuery) {
@@ -24,7 +26,7 @@ std::string normalizeQuery(const std::string& rawQuery) {
 }
 
 CacheKey CacheKey::fromRequest(const HttpRequest& req, const std::string& host) {
-    // Deliberately excludes arbitrary request headers. Only method/host/path/query.
+
     std::string q = normalizeQuery(req.query);
     std::string v;
     v.reserve(req.method.size() + host.size() + req.path.size() + q.size() + 8);
@@ -40,4 +42,4 @@ CacheKey CacheKey::fromRequest(const HttpRequest& req, const std::string& host) 
     return CacheKey{v};
 }
 
-}  // namespace edgecache
+}

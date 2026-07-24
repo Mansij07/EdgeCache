@@ -131,6 +131,10 @@ Windows: `powershell -File scripts\smoke.ps1`.
 
 Full rationale and the OOP/class design: [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md).
 
+Want to learn this whole system from scratch, file by file, with the "why"
+behind every decision? See the 33-module
+[EdgeCache Mastery Course](docs/course/00-INDEX.md).
+
 ---
 
 ## Repository layout
@@ -143,7 +147,7 @@ analytics-consumer/  Node.js/TS Kafka consumer → hourly per-path rollups in Po
 dummy-origin/        Trivial Express origin with tweakable Cache-Control headers
 deploy/              docker-compose.yml, k8s/ (base + local overlay), observability configs
 test/                integration/ (purge propagation), concurrency/ (coalescing), chaos/, load/
-docs/                design decisions, failure modes, demo, runbook, benchmarks
+docs/                design decisions, failure modes, demo, runbook, benchmarks, course/ (learning course)
 ```
 
 ---

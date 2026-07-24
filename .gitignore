@@ -13,10 +13,11 @@ npm-debug.log*
 # Env / secrets
 .env
 *.local.env
-
+docs/course
 # Editor / OS
 .vscode/
 .idea/
+.claude
 .DS_Store
 Thumbs.db
 
